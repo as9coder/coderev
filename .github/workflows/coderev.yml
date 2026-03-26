@@ -1,0 +1,43 @@
+# Mention @coderev on a pull request comment to run an AI review (OpenRouter).
+# Only the GitHub user in repo variable CODEREV_ALLOWED_USER can trigger.
+
+name: CodeRev
+
+on:
+  issue_comment:
+    types: [created]
+
+concurrency:
+  group: coderev-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    # PR comments use issue_comment; issue.pull_request is present only for PRs
+    if: |
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, '@coderev') &&
+      vars.CODEREV_ALLOWED_USER != '' &&
+      github.actor == vars.CODEREV_ALLOWED_USER
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run CodeRev (OpenRouter)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          MODEL: minimax/minimax-m2.7
+          CODEREV_ALLOWED_USER: ${{ vars.CODEREV_ALLOWED_USER }}
+        run: python scripts/coderev_review.py
