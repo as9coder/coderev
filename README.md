@@ -2,10 +2,23 @@
 
 Private AI pull request reviews: comment **`@coderev`** on a PR. Only **your** GitHub account can trigger it.
 
-You can run it in two ways:
+---
 
-1. **GitHub App (recommended, Claude-style)** — install the app on any repo you choose; **no workflow files** in those repos. You host a small HTTPS webhook (Docker-friendly).
-2. **GitHub Actions** — workflows in this repo or a [reusable workflow](examples/coderev-in-any-repo.yml) in other repos.
+## Easiest path (no app, no tunnel, no PEM)
+
+If you do not want to register a GitHub App or run a server, use **GitHub Actions only**:
+
+1. In each repo you care about, add [examples/coderev-in-any-repo.yml](examples/coderev-in-any-repo.yml) as `.github/workflows/coderev.yml`.
+2. In that repo: **Variable** `CODEREV_ALLOWED_USER` = your username, **Secret** `OPENROUTER_API_KEY`.
+3. Comment **`@coderev`** on a PR.
+
+That is it. No local hosting, no webhook setup.
+
+---
+
+## Optional: GitHub App (install on many repos without a workflow file per repo)
+
+Only use this if you want Claude-style “install app once” and are okay hosting a small HTTPS service. Otherwise skip entirely.
 
 ---
 
