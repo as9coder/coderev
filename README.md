@@ -13,6 +13,8 @@ You can run it in two ways:
 
 This matches how [Claude’s GitHub App](https://github.com/apps/claude) works: you **register an app**, **deploy** the webhook, then **install** it on your account or on selected repositories.
 
+**→ Step-by-step with field names:** **[SETUP-GITHUB-APP.md](SETUP-GITHUB-APP.md)** (create app, App ID, PEM, webhook secret, `.env`).
+
 ### Why “so many parameters”?
 
 GitHub’s App model needs **three** values from them (app id, private key, webhook secret). OpenRouter needs **one** API key. You need **one** username so random people cannot burn your credits. That is **five** lines in `.env` — not optional on GitHub’s side. Short names: `APP_ID`, `PRIVATE_KEY_FILE`, `WEBHOOK_SECRET`, `OPENROUTER_KEY`, `ALLOWED_USER` (old long names still work).
