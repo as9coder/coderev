@@ -13,58 +13,83 @@ You can run it in two ways:
 
 This matches how [Claude’s GitHub App](https://github.com/apps/claude) works: you **register an app**, **deploy** the webhook, then **install** it on your account or on selected repositories.
 
-### 1. Deploy the webhook
+### Why “so many parameters”?
 
-You need a **public HTTPS URL** (Railway, Render, Fly.io, a VPS, or `ngrok` for testing).
+GitHub’s App model needs **three** values from them (app id, private key, webhook secret). OpenRouter needs **one** API key. You need **one** username so random people cannot burn your credits. That is **five** lines in `.env` — not optional on GitHub’s side. Short names: `APP_ID`, `PRIVATE_KEY_FILE`, `WEBHOOK_SECRET`, `OPENROUTER_KEY`, `ALLOWED_USER` (old long names still work).
 
-```bash
-# copy env
-cp .env.example .env
-# fill in values (see below), then:
-docker compose up --build
-```
+---
 
-Health check: `GET /health` → `{"status":"ok"}`. Webhook path: **`POST /webhook`**.
+### Create the GitHub App (first)
 
-### 2. Create the GitHub App
+1. Open **[Register new GitHub App](https://github.com/settings/apps/new)**.
 
-1. Open **[Register new GitHub App](https://github.com/settings/apps/new)** (personal) or your org’s **Developer settings → GitHub Apps → New**.
+2. **Webhook URL:** use a tunnel URL when you have it (`https://…/webhook`). It must be **HTTPS** (you can update this after you start `cloudflared` / `ngrok`).
 
-2. **Webhook URL:** `https://YOUR_HOST/webhook` (must match your deployment).
+3. **Webhook secret:** a long random string — same value as **`WEBHOOK_SECRET`** in `.env`.
 
-3. **Webhook secret:** a long random string — use the **same** value as `GITHUB_WEBHOOK_SECRET` in your server env.
-
-4. **Repository permissions**
-
-   | Permission        | Access   |
-   |-------------------|----------|
-   | Contents          | Read-only |
-   | Issues            | Read-only |
-   | Pull requests     | Read and write |
-   | Metadata          | Read-only (default) |
+4. **Repository permissions:** Contents **Read**, Issues **Read**, Pull requests **Read and write**, Metadata **Read**.
 
 5. **Subscribe to events:** **Issue comment** only.
 
-6. **Where can this GitHub App be installed?** — Only on this account, or Any account (your choice).
+6. **Where can this GitHub App be installed?** — your choice (often “Only on this account”).
 
-7. Create the app. Note the **App ID**. Generate and download a **private key** (PEM).
+7. **Create** the app. Copy the numeric **App ID**. **Generate a private key** and save the `.pem` as **`github-app.pem`** in your `coderev` folder (gitignored).
 
-8. Set server environment:
+---
 
-   | Variable | Meaning |
-   |----------|---------|
-   | `GITHUB_APP_ID` | Numeric App ID from the app settings page |
-   | `GITHUB_APP_PRIVATE_KEY` | Full PEM (in `.env` use quoted string with `\n` for newlines) |
-   | `GITHUB_WEBHOOK_SECRET` | Same secret you entered in the app’s webhook settings |
-   | `OPENROUTER_API_KEY` | From [openrouter.ai/keys](https://openrouter.ai/keys) |
-   | `CODEREV_ALLOWED_USER` | Your GitHub username (only this user can trigger reviews) |
-   | `MODEL` | Optional; default `minimax/minimax-m2.7` |
+### `.env` (five fields)
 
-9. **Install** the app: app settings → **Install App** → choose **All repositories** or only the ones you want.
+| Variable | Meaning |
+|----------|---------|
+| `APP_ID` | App’s **About** page |
+| `PRIVATE_KEY_FILE` | e.g. `./github-app.pem` |
+| `WEBHOOK_SECRET` | Same as in GitHub App webhook settings |
+| `OPENROUTER_KEY` | From [openrouter.ai/keys](https://openrouter.ai/keys) |
+| `ALLOWED_USER` | Your GitHub username |
 
-10. Open a PR in an installed repo, comment **`@coderev`**. The app receives `issue_comment`, fetches the diff, calls OpenRouter, posts a **PR review**.
+Optional: `MODEL` (default `minimax/minimax-m2.7`). Aliases: `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_WEBHOOK_SECRET`, `OPENROUTER_API_KEY`, `CODEREV_ALLOWED_USER`.
 
-Optional: start from [`github-app-manifest.json`](github-app-manifest.json) (replace `YOUR_PUBLIC_URL`) using GitHub’s [manifest flow](https://docs.github.com/en/apps/sharing-github-apps/registering-a-github-app-from-a-manifest) if you prefer.
+Copy **`.env.example`** → **`.env`** and fill in.
+
+---
+
+### Run on this laptop (then VPS later)
+
+GitHub only delivers webhooks to **public HTTPS**. Run the app locally, then tunnel it.
+
+1. **Start the API**
+
+   ```powershell
+   .\scripts\run-local.ps1
+   ```
+
+2. **Tunnel** (pick one):
+
+   - [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/): `cloudflared tunnel --url http://127.0.0.1:8080` — use the `https://….trycloudflare.com` URL.
+
+   - **ngrok:** `ngrok http 8080` — use the `https` URL.
+
+3. In the GitHub App → **General**, set **Webhook URL** to `https://YOUR_HOST/webhook` and **Save**.
+
+4. **Install** the app (**Install App** in the sidebar) on your repos.
+
+5. Open a PR, comment **`@coderev`**.
+
+**Checks:** `GET https://YOUR_HOST/health` → `{"status":"ok"}`. Webhook: **`POST /webhook`**.
+
+**VPS later:** same `.env`, run `docker compose up -d` (or `uvicorn` behind Caddy/nginx), point the app’s webhook at `https://your-domain/webhook`.
+
+---
+
+### Deploy with Docker (server / VPS)
+
+```bash
+cp .env.example .env
+# edit .env, then:
+docker compose up --build -d
+```
+
+Optional: [`github-app-manifest.json`](github-app-manifest.json) + [manifest flow](https://docs.github.com/en/apps/sharing-github-apps/registering-a-github-app-from-a-manifest).
 
 ---
 
@@ -91,6 +116,6 @@ Copy [`examples/coderev-in-any-repo.yml`](examples/coderev-in-any-repo.yml) to `
 
 ## Security notes
 
-- Only **`CODEREV_ALLOWED_USER`** may trigger reviews; `@coderev` must appear in the comment.
+- Only **`ALLOWED_USER`** (GitHub App) or **`CODEREV_ALLOWED_USER`** (Actions) may trigger reviews; `@coderev` must appear in the comment.
 - Large diffs are truncated (see `MAX_DIFF_CHARS` in [`coderev_lib/core.py`](coderev_lib/core.py)).
 - Never commit `.env` or PEM keys.

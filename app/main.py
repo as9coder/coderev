@@ -7,12 +7,20 @@ import hashlib
 import hmac
 import json
 import logging
-import os
+from pathlib import Path
 from typing import Any
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.responses import PlainTextResponse, Response
 
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+except ImportError:
+    pass
+
+from coderev_lib import config
 from coderev_lib.core import run_review_from_issue_comment_event
 from coderev_lib.github_app_auth import get_installation_access_token
 
@@ -22,15 +30,11 @@ logger = logging.getLogger("coderev")
 app = FastAPI(title="CodeRev", version="1.0.0")
 
 
-def _webhook_secret() -> str:
-    s = os.environ.get("GITHUB_WEBHOOK_SECRET", "").strip()
-    if not s:
-        raise RuntimeError("GITHUB_WEBHOOK_SECRET is not set")
-    return s
-
-
 def _verify_signature(body: bytes, signature_header: str | None) -> bool:
-    secret = _webhook_secret()
+    try:
+        secret = config.webhook_secret()
+    except RuntimeError:
+        return False
     if not signature_header or not signature_header.startswith("sha256="):
         return False
     mac = hmac.new(secret.encode(), body, hashlib.sha256)
@@ -52,17 +56,13 @@ def _process_issue_comment(payload: dict[str, Any]) -> None:
             return
 
         token = get_installation_access_token(int(iid))
-        allowed = os.environ.get("CODEREV_ALLOWED_USER", "").strip()
-        if not allowed:
-            logger.error("CODEREV_ALLOWED_USER is not set")
+        try:
+            allowed = config.allowed_user()
+            api_key = config.openrouter_key()
+            model = config.model()
+        except RuntimeError as e:
+            logger.error("%s", e)
             return
-
-        api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
-        if not api_key:
-            logger.error("OPENROUTER_API_KEY is not set")
-            return
-
-        model = os.environ.get("MODEL", "minimax/minimax-m2.7").strip()
 
         result = run_review_from_issue_comment_event(
             payload,
