@@ -1,0 +1,17 @@
+{
+  "name": "CodeRev",
+  "url": "https://github.com/as9coder/coderev",
+  "hook_attributes": {
+    "url": "https://YOUR_PUBLIC_URL/webhook"
+  },
+  "redirect_url": "https://YOUR_PUBLIC_URL",
+  "callback_urls": [],
+  "public": false,
+  "default_permissions": {
+    "contents": "read",
+    "issues": "read",
+    "metadata": "read",
+    "pull_requests": "write"
+  },
+  "default_events": ["issue_comment"]
+}
