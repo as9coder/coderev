@@ -1,5 +1,10 @@
-# Mention @coderev on a pull request comment to run an AI review (OpenRouter).
-# Only the GitHub user in repo variable CODEREV_ALLOWED_USER can trigger.
+# Copy this file to: YOUR_REPO/.github/workflows/coderev.yml
+#
+# Then in YOUR_REPO set (Settings → Actions):
+#   Variables: CODEREV_ALLOWED_USER = your GitHub username
+#   Secrets:    OPENROUTER_API_KEY
+#
+# You can use org-level variables/secrets if you prefer.
 
 name: CodeRev
 
@@ -18,7 +23,7 @@ jobs:
       contains(github.event.comment.body, '@coderev') &&
       vars.CODEREV_ALLOWED_USER != '' &&
       github.actor == vars.CODEREV_ALLOWED_USER
-    uses: ./.github/workflows/coderev-reusable.yml
+    uses: as9coder/coderev/.github/workflows/coderev-reusable.yml@main
     with:
       target_repository: ${{ github.repository }}
     secrets: inherit

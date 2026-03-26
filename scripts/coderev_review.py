@@ -102,7 +102,11 @@ def main() -> None:
         print("Skip: comment is not on a pull request", file=sys.stderr)
         sys.exit(0)
 
-    repo = getenv_required("GITHUB_REPOSITORY")
+    # Reusable workflows set TARGET_REPOSITORY to the repo that has the PR;
+    # GITHUB_REPOSITORY would otherwise point at the workflow definition repo.
+    repo = (os.environ.get("TARGET_REPOSITORY") or "").strip() or getenv_required(
+        "GITHUB_REPOSITORY"
+    )
     owner, repo_name = repo.split("/", 1)
     pr_number = int(issue["number"])
 

@@ -1,0 +1,45 @@
+# Reusable workflow: checkout this repo for scripts, review the CALLER's PR.
+# Other repos add a tiny workflow that calls this with target_repository.
+
+name: CodeRev reusable
+
+on:
+  workflow_call:
+    inputs:
+      target_repository:
+        description: "Repository that has the PR (owner/name)"
+        required: true
+        type: string
+    secrets:
+      OPENROUTER_API_KEY:
+        required: true
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+
+    steps:
+      - name: Checkout CodeRev tooling
+        uses: actions/checkout@v4
+        with:
+          repository: as9coder/coderev
+          ref: main
+          path: _coderev
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run CodeRev (OpenRouter)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          MODEL: minimax/minimax-m2.7
+          CODEREV_ALLOWED_USER: ${{ vars.CODEREV_ALLOWED_USER }}
+          TARGET_REPOSITORY: ${{ inputs.target_repository }}
+        run: python _coderev/scripts/coderev_review.py

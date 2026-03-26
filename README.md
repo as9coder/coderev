@@ -1,49 +1,53 @@
 # CodeRev
 
-Private AI pull request reviews on GitHub: comment **`@coderev`** on a PR thread to run a review. Only your GitHub account can trigger it.
+Private AI pull request reviews on GitHub: comment **`@coderev`** on a PR thread. Only your GitHub account can trigger it.
 
 ---
 
-## When you can actually use it
+## Why it is not “@claude on any repo” with zero setup
 
-You are **ready to use CodeRev** as soon as **all** of these are true:
+GitHub only runs **Actions workflows that exist in that repository** (or that you **call** from that repo). There is no way for `as9coder/coderev` alone to listen to comments on **every** repo on GitHub — that is why [Claude on GitHub](https://github.com/apps/claude) is a **GitHub App** you install per account/repo.
 
-| # | Done? | What |
-|---|--------|------|
-| 1 | ☐ | This code is on GitHub (you pushed this repo, or pasted the workflow + script into a repo you own). |
-| 2 | ☐ | Repo variable **`CODEREV_ALLOWED_USER`** is set to **your** GitHub username (Settings → Secrets and variables → Actions → **Variables**). |
-| 3 | ☐ | Secret **`OPENROUTER_API_KEY`** is set (Settings → Secrets and variables → Actions → **Secrets**). |
-
-**Then:** open any pull request in that repo, leave a comment that includes **`@coderev`**, and wait for the Actions run to finish — your review appears on the PR.
-
-If something fails, check **Actions** → latest **CodeRev** run for logs.
+CodeRev’s equivalent is: **each repo you care about** either contains a workflow, or **reuses** the workflow from this repo (one small file to add).
 
 ---
 
-## Setup (step by step)
+## OpenRouter key: repository secret
 
-1. **Push to GitHub**  
-   Create an empty repo on GitHub (no README needed), then:
+Use **Repository secrets** (Secrets tab), **not** environment secrets, unless you already use GitHub Environments and attach this workflow to one.
 
-   ```bash
-   cd d:\coderev
-   git remote add origin https://github.com/YOU/YOUR-REPO.git
-   git push -u origin main
-   ```
+- Add **`OPENROUTER_API_KEY`** under **Settings → Secrets and variables → Actions → Secrets**.
 
-   (Use `master` instead of `main` if that is your default branch.)
+---
 
-2. **Variable** — `CODEREV_ALLOWED_USER` = your username exactly as on [github.com/settings/profile](https://github.com/settings/profile).
+## Use CodeRev in *this* repo (`as9coder/coderev`)
 
-3. **Secret** — `OPENROUTER_API_KEY` from [openrouter.ai/keys](https://openrouter.ai/keys).
+1. **Variable** `CODEREV_ALLOWED_USER` = your GitHub username (Variables tab).  
+2. **Secret** `OPENROUTER_API_KEY`.  
+3. Open a PR here, comment **`@coderev`**.
 
-4. **Try it** — `@coderev` on a PR comment.
+---
+
+## Use CodeRev in *any other* repo (what you actually wanted)
+
+For each project repo (e.g. `you/cool-app`):
+
+1. Copy [`examples/coderev-in-any-repo.yml`](examples/coderev-in-any-repo.yml) to:
+
+   `cool-app/.github/workflows/coderev.yml`
+
+2. In **that** repo’s settings, add the same **variable** and **secret** (`CODEREV_ALLOWED_USER`, `OPENROUTER_API_KEY`).  
+   - Or use **organization** secrets/variables if everything lives under one org.
+
+3. Open a PR **in that repo**, comment **`@coderev`**.
+
+The thin workflow calls **`as9coder/coderev/.github/workflows/coderev-reusable.yml@main`**, which checks out the scripts from this repo and reviews **that** repo’s PR (not the coderev repo).
 
 ---
 
 ## Changing the model
 
-Edit `.github/workflows/coderev.yml` (`MODEL` env).
+Edit **`.github/workflows/coderev-reusable.yml`** (`MODEL` env), push to `main`, and consumers pick it up on `@main`.
 
 ---
 
